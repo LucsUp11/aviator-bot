@@ -1,10 +1,9 @@
 import requests
 import time
 
-TOKEN = "SEU_TOKEN_AQUI"
-CHAT_ID = "SEU_CHAT_ID"
+TOKEN = "8781088670:AAEsHrAu6y7z2VNfyWU-NZeAwjLpTywfB7A"
+CHAT_ID = "1545696519"
 
-# Simulação (depois vamos conectar ao websocket real)
 historico = []
 
 def enviar_sinal(mensagem):
