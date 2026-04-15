@@ -2,8 +2,6 @@ name: Aviator Bot
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * *"
 
 jobs:
   run-bot:
@@ -20,7 +18,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install python-telegram-bot requests
+          pip install requests
 
       - name: Run bot
         run: python bot.py
