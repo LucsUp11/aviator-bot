@@ -5,6 +5,7 @@ TOKEN = "8781088670:AAEsHrAu6y7z2VNfyWU-NZeAwjLpTywfB7A"
 CHAT_ID = "1545696519"
 
 historico = []
+ultimo_sinal = 0
 
 def enviar_sinal(mensagem):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -15,37 +16,50 @@ def enviar_sinal(mensagem):
 
 def analisar():
     global historico
-    
-    if len(historico) < 5:
+    global ultimo_sinal
+
+    if len(historico) < 6:
         return
 
-    ultimos = historico[-5:]
+    agora = time.time()
+
+    # Evita spam (1 sinal a cada 3 minutos)
+    if agora - ultimo_sinal < 180:
+        return
+
+    ultimos = historico[-6:]
 
     baixos = [x for x in ultimos if x < 2]
+    altos = [x for x in ultimos if x > 5]
 
     # 4 baixos seguidos
     if len(baixos) >= 4:
         enviar_sinal(
-            "🚀 POSSÍVEL ENTRADA\n"
-            "📊 4 baixos detectados\n"
+            "🚀 SINAL AVIATOR\n"
+            "📉 Sequência de baixos\n"
             "🎯 Saída 2.00x"
         )
+        ultimo_sinal = agora
+        return
 
-    # Alto seguido de baixos
-    if ultimos[-5] > 10 and ultimos[-1] < 2:
+    # Alto seguido de queda
+    if ultimos[-3] > 8 and ultimos[-1] < 2:
         enviar_sinal(
-            "🔥 PADRÃO DETECTADO\n"
-            "📊 Alto seguido de baixos\n"
+            "🔥 POSSÍVEL RECUPERAÇÃO\n"
+            "📊 Alto seguido de queda\n"
             "🎯 Saída 2.50x"
         )
+        ultimo_sinal = agora
+        return
+
 
 while True:
-    
-    # Simulação (vamos trocar depois)
+
+    # SIMULAÇÃO (vamos trocar pelo websocket depois)
     novo = round(1 + (10 * (time.time() % 1)), 2)
-    
+
     historico.append(novo)
-    
+
     print("Novo:", novo)
 
     analisar()
