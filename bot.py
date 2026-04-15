@@ -4,7 +4,7 @@ import time
 TOKEN = "8781088670:AAEsHrAu6y7z2VNfyWU-NZeAwjLpTywfB7A"
 CHAT_ID = "1545696519"
 
-def enviar_sinal():
+while True:
     mensagem = "🚀 SINAL AVIATOR DETECTADO\n💰 Entrar agora\n🎯 Saída 2.00x"
 
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -14,6 +14,6 @@ def enviar_sinal():
         "text": mensagem
     })
 
-while True:
-    enviar_sinal()
-    time.sleep(300)
+    print("Sinal enviado...")
+
+    time.sleep(60)
