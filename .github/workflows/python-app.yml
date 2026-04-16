@@ -20,7 +20,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install websocket-client requests
+          pip install websocket-client
+          pip install requests
 
       - name: Run bot
         run: python bot.py
