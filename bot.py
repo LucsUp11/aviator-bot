@@ -1,16 +1,17 @@
 import websocket
+import json
 import requests
 import time
-import json
 
 TOKEN = "8781088670:AAEsHrAu6y7z2VNfyWU-NZeAwjLpTywfB7A"
 CHAT_ID = "1545696519"
 
+WS = "wss://et.sa-east-1.spribegaming.com/api/v1/public/et-player-stomp/600/e4bmvxgi/websocket?currency=BRL&userId=325836026&token=325836026%7Cd4a517297b894cbea718acb14d99487d&operator=betanobr&sessionToken=uWAb6fwqGKSZzGh4f01QGzAgehSUkjnjIutyn3K8BYtgyilhs2tr0EEwDkD3Oihn&deviceType=desktop&gameIdentifier=AVIATOR&gameZone=aviator_core_inst5_sa&lang=pt-br"
+
 historico = []
-ultimo_sinal = 0
 
 
-def enviar_sinal(msg):
+def enviar(msg):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     requests.post(url, data={
         "chat_id": CHAT_ID,
@@ -18,87 +19,59 @@ def enviar_sinal(msg):
     })
 
 
-def analisar():
-    global ultimo_sinal
+def analisar(valor):
+    historico.append(valor)
 
-    if len(historico) < 8:
+    if len(historico) < 5:
         return
 
-    agora = time.time()
-
-    if agora - ultimo_sinal < 120:
-        return
-
-    ultimos = historico[-8:]
-
+    ultimos = historico[-5:]
     baixos = [x for x in ultimos if x < 2]
 
-    if len(baixos) >= 5:
-        enviar_sinal(
-            "🚀 SINAL AVIATOR\n"
-            "📉 Sequência detectada\n"
-            "🎯 Entrar próxima rodada\n"
-            "💰 Saída 2.00x"
-        )
+    if len(baixos) >= 4:
+        enviar("🚀 POSSÍVEL ENTRADA\n🎯 Saída 2x")
 
-        ultimo_sinal = agora
+    if ultimos[-5] > 10 and ultimos[-1] < 2:
+        enviar("🔥 PADRÃO FORTE\n🎯 Saída 2.5x")
 
 
 def on_message(ws, message):
-
-    global historico
-
     try:
+        data = json.loads(message)
 
-        if "multiplier" in message:
-
-            data = json.loads(
-                message[message.find("{"):message.rfind("}")+1]
-            )
-
-            valor = float(data["multiplier"])
-
-            historico.append(valor)
-
-            print("Novo:", valor)
-
-            analisar()
+        if "crash" in str(data):
+            valor = float(data["crash"])
+            print("Crash:", valor)
+            analisar(valor)
 
     except:
         pass
-
-
-def on_open(ws):
-
-    print("Conectado")
-
-    ws.send("CONNECT\naccept-version:1.1,1.2\nheart-beat:10000,10000\n\n\x00")
-
-    time.sleep(1)
-
-    ws.send(
-        "SUBSCRIBE\nid:sub-0\ndestination:/topic/game.aviator\n\n\x00"
-    )
 
 
 def on_error(ws, error):
     print("Erro:", error)
 
 
-def on_close(ws, close_status_code, close_msg):
+def on_close(ws):
     print("Reconectando...")
+    time.sleep(5)
+    start()
 
 
-ws = websocket.WebSocketApp(
-    "wss://et.sa-east-1.spribegaming.com/api/v1/public/et-player-stomp/853/v4sjmrrx/websocket?currency=BRL&userId=325836026&token=325836026%7C2eb1768f3356499c8b05509b1d55d636&operator=betanobr&sessionToken=7uyvXOSqg7IcPkR7xs6LnxPxGHz6BuHT5FUEl1xpEGvMJ7X9ftE6tIwr0emT6hcY&deviceType=desktop&gameIdentifier=AVIATOR&gameZone=aviator_core_inst5_sa&lang=pt-br",
-    on_message=on_message,
-    on_open=on_open,
-    on_error=on_error,
-    on_close=on_close
-)
+def on_open(ws):
+    print("Conectado Aviator 🚀")
 
-while True:
-    try:
-        ws.run_forever()
-    except:
-        time.sleep(5)
+
+def start():
+    ws = websocket.WebSocketApp(
+        WS,
+        on_message=on_message,
+        on_error=on_error,
+        on_close=on_close
+    )
+
+    ws.on_open = on_open
+    ws.run_forever()
+
+
+start()
