@@ -2,7 +2,6 @@ import websocket
 import requests
 import time
 import json
-import statistics
 
 TOKEN = "8781088670:AAEsHrAu6y7z2VNfyWU-NZeAwjLpTywfB7A"
 CHAT_ID = "1545696519"
@@ -22,23 +21,23 @@ def enviar_sinal(msg):
 def analisar():
     global ultimo_sinal
 
-    if len(historico) < 10:
+    if len(historico) < 8:
         return
 
     agora = time.time()
 
-    if agora - ultimo_sinal < 180:
+    if agora - ultimo_sinal < 120:
         return
 
-    ultimos = historico[-10:]
+    ultimos = historico[-8:]
 
     baixos = [x for x in ultimos if x < 2]
 
-    if len(baixos) >= 6:
+    if len(baixos) >= 5:
         enviar_sinal(
             "🚀 SINAL AVIATOR\n"
-            "📉 Sequência baixa detectada\n"
-            "🎯 Entrada próxima rodada\n"
+            "📉 Sequência detectada\n"
+            "🎯 Entrar próxima rodada\n"
             "💰 Saída 2.00x"
         )
 
@@ -46,59 +45,60 @@ def analisar():
 
 
 def on_message(ws, message):
+
     global historico
 
     try:
 
-        # Spribe manda JSON dentro do STOMP
         if "multiplier" in message:
 
-            start = message.find("{")
-            end = message.rfind("}") + 1
+            data = json.loads(
+                message[message.find("{"):message.rfind("}")+1]
+            )
 
-            json_data = message[start:end]
+            valor = float(data["multiplier"])
 
-            data = json.loads(json_data)
+            historico.append(valor)
 
-            if "multiplier" in data:
+            print("Novo:", valor)
 
-                valor = float(data["multiplier"])
+            analisar()
 
-                historico.append(valor)
-
-                print("Novo:", valor)
-
-                analisar()
-
-    except Exception as e:
-        print("Erro:", e)
+    except:
+        pass
 
 
 def on_open(ws):
 
-    print("Conectado Betano")
+    print("Conectado")
 
-    # STOMP CONNECT
-    ws.send("CONNECT\naccept-version:1.2\n\n\x00")
+    ws.send("CONNECT\naccept-version:1.1,1.2\nheart-beat:10000,10000\n\n\x00")
 
     time.sleep(1)
 
-    # Subscribe Aviator
     ws.send(
-        "SUBSCRIBE\nid:sub-0\ndestination:/topic/aviator\n\n\x00"
+        "SUBSCRIBE\nid:sub-0\ndestination:/topic/game.aviator\n\n\x00"
     )
+
+
+def on_error(ws, error):
+    print("Erro:", error)
+
+
+def on_close(ws, close_status_code, close_msg):
+    print("Reconectando...")
 
 
 ws = websocket.WebSocketApp(
     "wss://et.sa-east-1.spribegaming.com/api/v1/public/et-player-stomp/853/v4sjmrrx/websocket?currency=BRL&userId=325836026&token=325836026%7C2eb1768f3356499c8b05509b1d55d636&operator=betanobr&sessionToken=7uyvXOSqg7IcPkR7xs6LnxPxGHz6BuHT5FUEl1xpEGvMJ7X9ftE6tIwr0emT6hcY&deviceType=desktop&gameIdentifier=AVIATOR&gameZone=aviator_core_inst5_sa&lang=pt-br",
     on_message=on_message,
-    on_open=on_open
+    on_open=on_open,
+    on_error=on_error,
+    on_close=on_close
 )
-
 
 while True:
     try:
         ws.run_forever()
     except:
-        print("Reconectando...")
         time.sleep(5)
