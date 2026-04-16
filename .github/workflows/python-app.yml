@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests
+          pip install websocket-client requests
 
       - name: Run bot
         run: timeout 290 python bot.py
