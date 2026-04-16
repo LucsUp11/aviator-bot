@@ -4,7 +4,8 @@ import base64
 import requests
 import time
 
-TOKEN = "8781088670:AAEsHrAu6y7z2VNfyWU-NZeAwjLpTywfB7A" 
+# TELEGRAM
+TOKEN = "8781088670:AAEsHrAu6y7z2VNfyWU-NZeAwjLpTywfB7A"
 CHAT_ID = "1545696519"
 
 historico = []
@@ -21,12 +22,14 @@ def enviar_sinal(msg):
 
 def analisar():
     global ultimo_sinal
+    global historico
 
     if len(historico) < 8:
         return
 
     agora = time.time()
 
+    # evita spam
     if agora - ultimo_sinal < 300:
         return
 
@@ -38,7 +41,8 @@ def analisar():
         enviar_sinal(
             "🚀 SINAL AVIATOR\n"
             "📉 Sequência baixa detectada\n"
-            "🎯 Saída 2.00x"
+            "🎯 Entrada próxima rodada\n"
+            "💰 Saída 2.00x"
         )
 
         ultimo_sinal = agora
@@ -48,13 +52,11 @@ def on_message(ws, message):
     global historico
 
     try:
-        data = json.loads(message)
-
         if "crash" in message.lower():
 
             valor = float(
                 message.split("crash")[-1]
-                .replace('"',"")
+                .replace('"', "")
                 .replace(":", "")
                 [:4]
             )
@@ -79,4 +81,10 @@ ws = websocket.WebSocketApp(
     on_open=on_open
 )
 
-ws.run_forever()
+
+while True:
+    try:
+        ws.run_forever()
+    except:
+        print("Reconectando...")
+        time.sleep(5)
