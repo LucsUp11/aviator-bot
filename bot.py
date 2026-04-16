@@ -1,9 +1,10 @@
 import websocket
 import json
-import base64
 import requests
 import time
+import statistics
 
+# TELEGRAM (SEUS DADOS)
 TOKEN = "8781088670:AAEsHrAu6y7z2VNfyWU-NZeAwjLpTywfB7A"
 CHAT_ID = "1545696519"
 
@@ -19,63 +20,94 @@ def enviar_sinal(msg):
     })
 
 
-def detectar_ciclo():
+def probabilidade_subida():
+
     if len(historico) < 20:
-        return False
+        return 0
 
     ultimos = historico[-20:]
 
-    baixos = [x for x in ultimos if x < 2]
-    medios = [x for x in ultimos if 2 <= x <= 5]
-    altos = [x for x in ultimos if x > 5]
+    baixos = len([x for x in ultimos if x < 2])
+    medios = len([x for x in ultimos if 2 <= x <= 5])
+    altos = len([x for x in ultimos if x > 5])
 
-    # ciclo clássico aviator
-    if len(baixos) > 10 and len(altos) < 3:
+    score = 0
+
+    if baixos > 10:
+        score += 40
+
+    if altos < 2:
+        score += 30
+
+    if medios < 5:
+        score += 20
+
+    return score
+
+
+def detectar_repeticao():
+
+    if len(historico) < 10:
+        return False
+
+    ultimos = historico[-10:]
+
+    baixos = [x for x in ultimos if x < 2]
+
+    if len(baixos) >= 6:
         return True
 
     return False
 
 
-def detectar_sequencia():
-    if len(historico) < 8:
+def detectar_timing():
+
+    if len(historico) < 5:
         return False
 
-    ultimos = historico[-8:]
+    ultimos = historico[-5:]
 
-    baixos = [x for x in ultimos if x < 2]
+    media = statistics.mean(ultimos)
 
-    if len(baixos) >= 5:
+    if media < 2:
         return True
 
     return False
 
 
 def detectar_explosao():
-    if len(historico) < 5:
+
+    if len(historico) < 6:
         return False
 
-    ultimos = historico[-5:]
+    ultimos = historico[-6:]
 
-    # Alto depois de sequência baixa
-    if ultimos[-5] > 10 and all(x < 2 for x in ultimos[-4:]):
+    if ultimos[-1] < 1.5 and ultimos[-2] < 1.5 and ultimos[-3] < 1.5:
         return True
 
     return False
 
 
 def analisar():
+
     global ultimo_sinal
 
     agora = time.time()
 
-    # evita spam
-    if agora - ultimo_sinal < 240:
+    if agora - ultimo_sinal < 180:
         return
 
-    if detectar_ciclo():
+    prob = probabilidade_subida()
+
+    repeticao = detectar_repeticao()
+    timing = detectar_timing()
+    explosao = detectar_explosao()
+
+    if prob > 60 and repeticao:
+
         enviar_sinal(
-            "🚀 CICLO DETECTADO\n"
-            "📊 Probabilidade alta\n"
+            "🚀 SINAL FORTE AVIATOR\n"
+            f"📊 Probabilidade: {prob}%\n"
             "🎯 Entrada próxima rodada\n"
             "💰 Saída 2.20x"
         )
@@ -83,17 +115,9 @@ def analisar():
         ultimo_sinal = agora
         return
 
-    if detectar_sequencia():
-        enviar_sinal(
-            "📉 SEQUÊNCIA BAIXA\n"
-            "🎯 Entrada próxima rodada\n"
-            "💰 Saída 2.00x"
-        )
 
-        ultimo_sinal = agora
-        return
+    if explosao:
 
-    if detectar_explosao():
         enviar_sinal(
             "🔥 POSSÍVEL EXPLOSÃO\n"
             "🚀 Entrada agressiva\n"
@@ -104,10 +128,24 @@ def analisar():
         return
 
 
+    if timing:
+
+        enviar_sinal(
+            "📉 TIMING DETECTADO\n"
+            "🎯 Entrada segura\n"
+            "💰 Saída 2.00x"
+        )
+
+        ultimo_sinal = agora
+        return
+
+
 def on_message(ws, message):
+
     global historico
 
     try:
+
         if "crash" in message.lower():
 
             valor = float(
