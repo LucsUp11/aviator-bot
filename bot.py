@@ -1,10 +1,9 @@
 import websocket
-import json
 import requests
 import time
+import json
 import statistics
 
-# TELEGRAM (SEUS DADOS)
 TOKEN = "8781088670:AAEsHrAu6y7z2VNfyWU-NZeAwjLpTywfB7A"
 CHAT_ID = "1545696519"
 
@@ -20,153 +19,74 @@ def enviar_sinal(msg):
     })
 
 
-def probabilidade_subida():
-
-    if len(historico) < 20:
-        return 0
-
-    ultimos = historico[-20:]
-
-    baixos = len([x for x in ultimos if x < 2])
-    medios = len([x for x in ultimos if 2 <= x <= 5])
-    altos = len([x for x in ultimos if x > 5])
-
-    score = 0
-
-    if baixos > 10:
-        score += 40
-
-    if altos < 2:
-        score += 30
-
-    if medios < 5:
-        score += 20
-
-    return score
-
-
-def detectar_repeticao():
+def analisar():
+    global ultimo_sinal
 
     if len(historico) < 10:
-        return False
-
-    ultimos = historico[-10:]
-
-    baixos = [x for x in ultimos if x < 2]
-
-    if len(baixos) >= 6:
-        return True
-
-    return False
-
-
-def detectar_timing():
-
-    if len(historico) < 5:
-        return False
-
-    ultimos = historico[-5:]
-
-    media = statistics.mean(ultimos)
-
-    if media < 2:
-        return True
-
-    return False
-
-
-def detectar_explosao():
-
-    if len(historico) < 6:
-        return False
-
-    ultimos = historico[-6:]
-
-    if ultimos[-1] < 1.5 and ultimos[-2] < 1.5 and ultimos[-3] < 1.5:
-        return True
-
-    return False
-
-
-def analisar():
-
-    global ultimo_sinal
+        return
 
     agora = time.time()
 
     if agora - ultimo_sinal < 180:
         return
 
-    prob = probabilidade_subida()
+    ultimos = historico[-10:]
 
-    repeticao = detectar_repeticao()
-    timing = detectar_timing()
-    explosao = detectar_explosao()
+    baixos = [x for x in ultimos if x < 2]
 
-    if prob > 60 and repeticao:
-
+    if len(baixos) >= 6:
         enviar_sinal(
-            "🚀 SINAL FORTE AVIATOR\n"
-            f"📊 Probabilidade: {prob}%\n"
+            "🚀 SINAL AVIATOR\n"
+            "📉 Sequência baixa detectada\n"
             "🎯 Entrada próxima rodada\n"
-            "💰 Saída 2.20x"
-        )
-
-        ultimo_sinal = agora
-        return
-
-
-    if explosao:
-
-        enviar_sinal(
-            "🔥 POSSÍVEL EXPLOSÃO\n"
-            "🚀 Entrada agressiva\n"
-            "💰 Saída 3.00x"
-        )
-
-        ultimo_sinal = agora
-        return
-
-
-    if timing:
-
-        enviar_sinal(
-            "📉 TIMING DETECTADO\n"
-            "🎯 Entrada segura\n"
             "💰 Saída 2.00x"
         )
 
         ultimo_sinal = agora
-        return
 
 
 def on_message(ws, message):
-
     global historico
 
     try:
 
-        if "crash" in message.lower():
+        # Spribe manda JSON dentro do STOMP
+        if "multiplier" in message:
 
-            valor = float(
-                message.split("crash")[-1]
-                .replace('"', "")
-                .replace(":", "")
-                [:4]
-            )
+            start = message.find("{")
+            end = message.rfind("}") + 1
 
-            historico.append(valor)
+            json_data = message[start:end]
 
-            print("Novo:", valor)
+            data = json.loads(json_data)
 
-            analisar()
+            if "multiplier" in data:
 
-    except:
-        pass
+                valor = float(data["multiplier"])
+
+                historico.append(valor)
+
+                print("Novo:", valor)
+
+                analisar()
+
+    except Exception as e:
+        print("Erro:", e)
 
 
 def on_open(ws):
+
     print("Conectado Betano")
+
+    # STOMP CONNECT
+    ws.send("CONNECT\naccept-version:1.2\n\n\x00")
+
+    time.sleep(1)
+
+    # Subscribe Aviator
+    ws.send(
+        "SUBSCRIBE\nid:sub-0\ndestination:/topic/aviator\n\n\x00"
+    )
 
 
 ws = websocket.WebSocketApp(
