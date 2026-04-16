@@ -1,21 +1,25 @@
+import websocket
+import json
+import base64
 import requests
 import time
 
-TOKEN = "8781088670:AAEsHrAu6y7z2VNfyWU-NZeAwjLpTywfB7A"
+TOKEN = "8781088670:AAEsHrAu6y7z2VNfyWU-NZeAwjLpTywfB7A" 
 CHAT_ID = "1545696519"
 
 historico = []
 ultimo_sinal = 0
 
-def enviar_sinal(mensagem):
+
+def enviar_sinal(msg):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     requests.post(url, data={
         "chat_id": CHAT_ID,
-        "text": mensagem
+        "text": msg
     })
 
+
 def analisar():
-    global historico
     global ultimo_sinal
 
     if len(historico) < 8:
@@ -23,41 +27,56 @@ def analisar():
 
     agora = time.time()
 
-    # Evita spam (1 sinal a cada 5 minutos)
     if agora - ultimo_sinal < 300:
         return
 
     ultimos = historico[-8:]
 
     baixos = [x for x in ultimos if x < 2]
-    muito_baixos = [x for x in ultimos if x < 1.5]
 
-    # 5 baixos seguidos (forte)
-    if len(baixos[-5:]) == 5:
+    if len(baixos) >= 5:
         enviar_sinal(
-            "🚀 SINAL FORTE AVIATOR\n"
-            "📉 5 baixos seguidos\n"
+            "🚀 SINAL AVIATOR\n"
+            "📉 Sequência baixa detectada\n"
             "🎯 Saída 2.00x"
         )
-        ultimo_sinal = agora
-        return
 
-    # 3 muito baixos seguidos
-    if len(muito_baixos[-3:]) == 3:
-        enviar_sinal(
-            "🔥 POSSÍVEL EXPLOSÃO\n"
-            "📊 3 muito baixos seguidos\n"
-            "🎯 Saída 2.20x"
-        )
         ultimo_sinal = agora
-        return
 
-    # Alto forte seguido de queda
-    if ultimos[-4] > 10 and ultimos[-1] < 1.5:
-        enviar_sinal(
-            "⚡ PADRÃO DETECTADO\n"
-            "📉 Alto forte seguido queda\n"
-            "🎯 Saída 2.50x"
-        )
-        ultimo_sinal = agora
-        return
+
+def on_message(ws, message):
+    global historico
+
+    try:
+        data = json.loads(message)
+
+        if "crash" in message.lower():
+
+            valor = float(
+                message.split("crash")[-1]
+                .replace('"',"")
+                .replace(":", "")
+                [:4]
+            )
+
+            historico.append(valor)
+
+            print("Novo:", valor)
+
+            analisar()
+
+    except:
+        pass
+
+
+def on_open(ws):
+    print("Conectado Betano")
+
+
+ws = websocket.WebSocketApp(
+    "wss://et.sa-east-1.spribegaming.com/api/v1/public/et-player-stomp/853/v4sjmrrx/websocket?currency=BRL&userId=325836026&token=325836026%7C2eb1768f3356499c8b05509b1d55d636&operator=betanobr&sessionToken=7uyvXOSqg7IcPkR7xs6LnxPxGHz6BuHT5FUEl1xpEGvMJ7X9ftE6tIwr0emT6hcY&deviceType=desktop&gameIdentifier=AVIATOR&gameZone=aviator_core_inst5_sa&lang=pt-br",
+    on_message=on_message,
+    on_open=on_open
+)
+
+ws.run_forever()
