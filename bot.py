@@ -2,6 +2,8 @@ import websocket
 import json
 import requests
 import time
+import base64
+import zlib
 
 TOKEN = "8781088670:AAEsHrAu6y7z2VNfyWU-NZeAwjLpTywfB7A"
 CHAT_ID = "1545696519"
@@ -26,22 +28,50 @@ def analisar(valor):
         return
 
     ultimos = historico[-5:]
+
     baixos = [x for x in ultimos if x < 2]
 
     if len(baixos) >= 4:
-        enviar("🚀 POSSÍVEL ENTRADA\n🎯 Saída 2x")
+        enviar("🚀 POSSÍVEL ENTRADA\n💰 Entrar agora\n🎯 Saída 2x")
 
     if ultimos[-5] > 10 and ultimos[-1] < 2:
-        enviar("🔥 PADRÃO FORTE\n🎯 Saída 2.5x")
+        enviar("🔥 PADRÃO FORTE\n💰 Entrar\n🎯 Saída 2.5x")
+
+
+def decodificar(mensagem):
+    try:
+        if "{" in mensagem:
+            return mensagem
+
+        payload = mensagem.split("\n")[-1]
+
+        decoded = base64.b64decode(payload)
+
+        try:
+            decoded = zlib.decompress(decoded, -zlib.MAX_WBITS)
+        except:
+            decoded = zlib.decompress(decoded)
+
+        return decoded.decode()
+
+    except:
+        return None
 
 
 def on_message(ws, message):
-    try:
-        data = json.loads(message)
+    data = decodificar(message)
 
-        if "crash" in str(data):
-            valor = float(data["crash"])
+    if not data:
+        return
+
+    try:
+        json_data = json.loads(data)
+
+        if "crash" in str(json_data):
+            valor = float(json_data["crash"])
+
             print("Crash:", valor)
+
             analisar(valor)
 
     except:
